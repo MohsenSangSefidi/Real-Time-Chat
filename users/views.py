@@ -8,7 +8,7 @@ from .models import User
 
 
 @login_required
-def profile_view(request, username, *args, **kwargs):
+def profile_view(request, username=None, *args, **kwargs):
     if username:
         profile = get_object_or_404(User, username=username).profile
 

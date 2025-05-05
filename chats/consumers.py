@@ -23,10 +23,17 @@ class ChatsConsumer(WebsocketConsumer):
 
         async_to_sync(self.channel_layer.group_add)(self.chatroom_id, self.channel_name)
 
+        if self.user not in self.chatroom.users_online.all():
+            self.chatroom.users_online.add(self.user)
+        self.update_online_user()
+
         self.accept()
 
     def disconnect(self, close_code):
         async_to_sync(self.channel_layer.group_discard)(self.chatroom_id, self.channel_name)
+
+        self.chatroom.users_online.remove(self.user)
+        self.update_online_user()
 
     def receive(self, text_data=None, bytes_data=None):
         text_data_json = json.loads(text_data)
@@ -56,4 +63,21 @@ class ChatsConsumer(WebsocketConsumer):
         }
 
         html = render_to_string('partial_massage.html', context=context)
+        self.send(text_data=html)
+
+    def update_online_user(self):
+        online_count = self.chatroom.users_online.count() - 1
+
+        event = {
+            'type': 'online_count_handler',
+            'online_count': online_count,
+        }
+
+        async_to_sync(self.channel_layer.group_send)(self.chatroom_id, event)
+
+    def online_count_handler(self, event):
+        online_count = event['online_count']
+
+        html = render_to_string('online_count.html', context=event)
+
         self.send(text_data=html)
